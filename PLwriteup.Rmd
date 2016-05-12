@@ -1,0 +1,98 @@
+---
+title: "Practical Machine Learning Project"
+author: "Swapnil Jagdale"
+date: "May 12, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Summary
+
+
+In this analysis we attempt to build a model which would help us to predict the possible way a person was performing a dumbell curl exercise. This is a classification problem where we have to predict one of the 5 categories for the give data using the train data with our model.
+
+
+
+###Step 1: Pre processing
+
+We start by downloading the train from "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv" and test data from "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv".
+
+ By opening the train data csv file we would find alot of null values, junk characters like '#DIV/0!' and NA values, which need to be handled to avoid future issues. This could be handled as follows:-
+
+
+
+
+```{r }
+setwd("//ent.rt.csaa.com/aaa/profiles/Citrix/gu9jagd/Desktop/PLML/")
+data <- read.csv("pml-training.csv",header=T,na.strings=c("","NA","#DIV/0!"))
+```
+ This line loads the data and fills each and every junk or null value with NA.
+
+```{r }
+varNa <- which(colMeans(is.na(data))>0.95)
+data_new <- data[,-varNa]
+```
+
+The part of code above gets the names of columns from train data where number of null rows are more than 95%. Thus this data was not need as it consist of maximum number of null values and would have made a negative impact on the model.
+
+Once the the columns with maximum NA values are removed from train data, we find that the columns like raw_timestamp_part_1,raw_timestamp_part_2,cvtd_timestamp gives information regarding the time at which the excersie was performed whihc has no relation with the how correctly the fellow is doing the excersie so this columns shall be removed from the training data set. Code bellow does this task
+
+
+```{r }
+data_new <- data_new[,-c(3,4,5)]
+```
+
+
+After the removal of above irrevant columns if we have a look at the remaining columns then we get that columns like user_name, num_window and new_window are the columns which do not provide any meaningfull infomation, these columns may result a good log loss with train and test data but may have a negative impact on the result when we run the model on real data. So we need to remove this columns as well. Thus the remaining 53 variable will be used in prediction.
+
+
+
+The line bellow code create a evenly distributed train data and test data based on the classe variable.
+
+```{r }
+library(caret)
+inTrain <- createDataPartition(y=data_new$classe,p=0.75,list=F)
+training <- data_new[inTrain,]
+testing <- data_new[-inTrain,]
+training <- training[,5:57]
+testing <- testing[,5:57]
+```
+
+###Step 2: Model training
+
+Here we will use random forest algorithm to train our model as this problem is clasification problem and random forest will be perfect to solve our problem.
+
+```{r }
+library(randomForest)
+model <- randomForest(classe~.,data=training)
+```
+
+
+###Step 3: Model testing and Cross Validation
+
+Code writen below will predicts on the test data and show us the confusion matrix for our model. Thus we can see the sensitivity, specificity and accuracy of the model.
+
+```{r }
+library(randomForest)
+library(caret)
+res <- predict(model,testing)
+confusionMatrix(res,testing$classe)
+```
+
+Thus from the above figure we can see that our model results in high accuray with random forest algorithm.
+
+###Step 4: Apply model to real data
+Before we apply our model to new dataset we need to do the same preprocessing we did while training our model, which is done by following piece of code.
+
+```{r }
+setwd("//ent.rt.csaa.com/aaa/profiles/Citrix/gu9jagd/Desktop/PLML/")
+test <- read.csv("pml-testing.csv",header=T,na.strings=c("","NA","#DIV/0!"))
+test_new <- test[,-varNa]
+test_new <- test_new[,-c(3,4,5)]
+test <- test_new[,5:57]
+result <- predict(model,test)
+result
+```
